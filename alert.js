@@ -1,5 +1,12 @@
 const axios = require('axios');
 require('dotenv').config();
+const express = require('express')
+const app = express()
+const port = process.env.PORT || 4000;
+
+app.listen(port, () => {
+    console.log(`Example app listening on port ${port}`)
+})
 // Telegram configuration
 console.log(process.env.TELEGRAM_BOT_TOKEN, process.env.TELEGRAM_USER_ID)
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
@@ -71,23 +78,23 @@ async function sendConsolidatedAlerts(data) {
             message += `⚠️ *${type}*: Server might be down (No response from API)\n`;
         } else if (successRate < 60) {
             message += `*${type}* (Below 60%):\n` +
-                       `📊 Success Rate: ${successRate.toFixed(2)}%\n` +
-                       `✅ Completed: ${completed}\n` +
-                       `❌ Failed: ${failed}\n` +
-                       `⏳ Pending: ${pending}\n` +
-                       `📈 Total: ${total}\n\n`;
+                `📊 Success Rate: ${successRate.toFixed(2)}%\n` +
+                `✅ Completed: ${completed}\n` +
+                `❌ Failed: ${failed}\n` +
+                `⏳ Pending: ${pending}\n` +
+                `📈 Total: ${total}\n\n`;
         } else {
             message += `*${type}*:\n` +
-                       `📊 Success Rate: ${successRate.toFixed(2)}%\n` +
-                       `✅ Completed: ${completed}\n` +
-                       `❌ Failed: ${failed}\n` +
-                       `⏳ Pending: ${pending}\n` +
-                       `📈 Total: ${total}\n\n`;
+                `📊 Success Rate: ${successRate.toFixed(2)}%\n` +
+                `✅ Completed: ${completed}\n` +
+                `❌ Failed: ${failed}\n` +
+                `⏳ Pending: ${pending}\n` +
+                `📈 Total: ${total}\n\n`;
         }
     }
 
     message += "Reply `/check` to stop alerts!";
-    
+
     let userAcknowledged = false;
     for (let i = 0; i < 1 && !userAcknowledged; i++) {
         await sendTelegramMessage(message);
@@ -151,17 +158,17 @@ async function handleUpdateCommand(type, url, filterProvider, providerName = nul
     const transactions = await fetchTransactions(url);
     let relevantTransactions = transactions;
     if (filterProvider) {
-        relevantTransactions = providerName === "Easypaisa" 
-            ? filterEasypaisaTransactions(transactions) 
+        relevantTransactions = providerName === "Easypaisa"
+            ? filterEasypaisaTransactions(transactions)
             : filterJazzCashTransactions(transactions);
     }
     const { total, completed, failed, pending, successRate } = calculateTransactionStats(relevantTransactions);
     const message = `📊 *${type}* Success Rate Update:\n\n` +
-                    `✅ Success Rate: ${successRate.toFixed(2)}%\n` +
-                    `✅ Completed: ${completed}\n` +
-                    `❌ Failed: ${failed}\n` +
-                    `⏳ Pending: ${pending}\n` +
-                    `📈 Total: ${total}`;
+        `✅ Success Rate: ${successRate.toFixed(2)}%\n` +
+        `✅ Completed: ${completed}\n` +
+        `❌ Failed: ${failed}\n` +
+        `⏳ Pending: ${pending}\n` +
+        `📈 Total: ${total}`;
     await sendTelegramMessage(message);
 }
 
