@@ -4,7 +4,7 @@
   "description": "",
   "main": "alert.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "node alert.js"
   },
   "keywords": [],
   "author": "",
