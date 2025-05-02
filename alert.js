@@ -1,19 +1,21 @@
 const axios = require('axios');
-require('dotenv').config();
-const express = require('express')
-const app = express()
-const port = process.env.PORT || 4000;
+const dotenv = require('dotenv')
+const express = require('express');
 
-app.listen(port, () => {
-    console.log(`Example app listening on port ${port}`)
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, (req,res) => {
+    console.log(`Example app listening on port ${PORT}`)
 })
 
-app.get("/", (req,res,next) => {
-  return res.status(200).json({status: "success"})
+app.get("/", (req, res) => {
+    return res.status(200).json({status: "success"})
 })
 
 // Telegram configuration
-console.log(process.env.TELEGRAM_BOT_TOKEN, process.env.TELEGRAM_USER_ID)
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_USER_ID = process.env.TELEGRAM_USER_ID;
 
@@ -21,11 +23,22 @@ const TELEGRAM_USER_ID = process.env.TELEGRAM_USER_ID;
 const API_URL_ALL = 'https://server.sahulatpay.com/transactions/tele/last-15-mins';
 const MERCHANTS = {
     51: 'https://server.sahulatpay.com/transactions/tele/last-15-mins?merchantId=51', // Monetix
-    5: 'https://server.sahulatpay.com/transactions/tele/last-15-mins?merchantId=5'    // Add more as needed
+    5: 'https://server.sahulatpay.com/transactions/tele/last-15-mins?merchantId=5',
+    16: 'https://server.sahulatpay.com/transactions/tele/last-15-mins?merchantId=16'   // Add more as needed
 };
 
 // Global offset to track processed Telegram updates
 let lastUpdateId = 0;
+
+// Function to delete Telegram webhook
+async function deleteWebhook() {
+    try {
+        const response = await axios.get(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/deleteWebhook`);
+        console.log("Webhook deleted:", response.data);
+    } catch (error) {
+        console.error("Error deleting webhook:", error.response?.data || error.message);
+    }
+}
 
 // Function to fetch transactions
 async function fetchTransactions(url) {
@@ -69,7 +82,7 @@ async function sendTelegramMessage(message) {
         });
         console.log("✅ Message sent to Telegram!");
     } catch (error) {
-        console.error(`❌ Failed to send Telegram message: ${error.message}`);
+        console.error(`❌ Failed to send Telegram message: ${error.response?.data || error.message}`);
     }
 }
 
@@ -83,23 +96,23 @@ async function sendConsolidatedAlerts(data) {
             message += `⚠️ *${type}*: Server might be down (No response from API)\n`;
         } else if (successRate < 60) {
             message += `*${type}* (Below 60%):\n` +
-                `📊 Success Rate: ${successRate.toFixed(2)}%\n` +
-                `✅ Completed: ${completed}\n` +
-                `❌ Failed: ${failed}\n` +
-                `⏳ Pending: ${pending}\n` +
-                `📈 Total: ${total}\n\n`;
+                       `📊 Success Rate: ${successRate.toFixed(2)}%\n` +
+                       `✅ Completed: ${completed}\n` +
+                       `❌ Failed: ${failed}\n` +
+                       `⏳ Pending: ${pending}\n` +
+                       `📈 Total: ${total}\n\n`;
         } else {
             message += `*${type}*:\n` +
-                `📊 Success Rate: ${successRate.toFixed(2)}%\n` +
-                `✅ Completed: ${completed}\n` +
-                `❌ Failed: ${failed}\n` +
-                `⏳ Pending: ${pending}\n` +
-                `📈 Total: ${total}\n\n`;
+                       `📊 Success Rate: ${successRate.toFixed(2)}%\n` +
+                       `✅ Completed: ${completed}\n` +
+                       `❌ Failed: ${failed}\n` +
+                       `⏳ Pending: ${pending}\n` +
+                       `📈 Total: ${total}\n\n`;
         }
     }
 
-    message += "Reply `/check` to stop alerts!";
-
+    message += "Reply /check to stop alerts!";
+    
     let userAcknowledged = false;
     for (let i = 0; i < 1 && !userAcknowledged; i++) {
         await sendTelegramMessage(message);
@@ -118,6 +131,7 @@ async function sendConsolidatedAlerts(data) {
 async function checkUserResponse() {
     const telegramUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getUpdates?offset=${lastUpdateId + 1}`;
     try {
+        console.log("Fetching Telegram updates...");
         const response = await axios.get(telegramUrl);
         const updates = response.data.result;
 
@@ -153,7 +167,12 @@ async function checkUserResponse() {
         }
         return stopAlerts;
     } catch (error) {
-        console.error("❌ Error checking Telegram messages: ", error.message);
+        if (error.response && error.response.status === 409) {
+            console.warn("⚠️ Conflict detected in getUpdates. Retrying after delay...");
+            await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds before retrying
+            return await checkUserResponse(); // Retry
+        }
+        console.error("❌ Error checking Telegram messages: ", error.response?.data || error.message);
         return false;
     }
 }
@@ -163,17 +182,17 @@ async function handleUpdateCommand(type, url, filterProvider, providerName = nul
     const transactions = await fetchTransactions(url);
     let relevantTransactions = transactions;
     if (filterProvider) {
-        relevantTransactions = providerName === "Easypaisa"
-            ? filterEasypaisaTransactions(transactions)
+        relevantTransactions = providerName === "Easypaisa" 
+            ? filterEasypaisaTransactions(transactions) 
             : filterJazzCashTransactions(transactions);
     }
     const { total, completed, failed, pending, successRate } = calculateTransactionStats(relevantTransactions);
     const message = `📊 *${type}* Success Rate Update:\n\n` +
-        `✅ Success Rate: ${successRate.toFixed(2)}%\n` +
-        `✅ Completed: ${completed}\n` +
-        `❌ Failed: ${failed}\n` +
-        `⏳ Pending: ${pending}\n` +
-        `📈 Total: ${total}`;
+                    `✅ Success Rate: ${successRate.toFixed(2)}%\n` +
+                    `✅ Completed: ${completed}\n` +
+                    `❌ Failed: ${failed}\n` +
+                    `⏳ Pending: ${pending}\n` +
+                    `📈 Total: ${total}`;
     await sendTelegramMessage(message);
 }
 
@@ -227,13 +246,18 @@ async function monitorTransactions() {
 async function monitorCommands() {
     while (true) {
         await checkUserResponse();
-        await new Promise(resolve => setTimeout(resolve, 10 * 1000)); // Check every 10 seconds
+        await new Promise(resolve => setTimeout(resolve, 30 * 1000)); // Check every 30 seconds
     }
 }
 
 // Start all monitoring tasks concurrently
 async function startMonitoring() {
     console.log("Starting all monitoring tasks...");
+    // Delete webhook to ensure polling works
+    await deleteWebhook();
+    // Add delay to ensure previous instance terminates (helps with nodemon restarts)
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Ensure only one instance is running (manually check Task Manager or use taskkill /F /IM node.exe if needed)
     Promise.all([
         monitorTransactions(),
         monitorCommands()
