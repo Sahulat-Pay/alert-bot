@@ -243,12 +243,12 @@ async function monitorTransactions() {
 }
 
 // Function to periodically check for user commands
-async function monitorCommands() {
-    while (true) {
-        await checkUserResponse();
-        await new Promise(resolve => setTimeout(resolve, 30 * 1000)); // Check every 30 seconds
-    }
-}
+// async function monitorCommands() {
+//     while (true) {
+//         // await checkUserResponse();
+//         await new Promise(resolve => setTimeout(resolve, 30 * 1000)); // Check every 30 seconds
+//     }
+// }
 
 // Start all monitoring tasks concurrently
 async function startMonitoring() {
@@ -260,7 +260,7 @@ async function startMonitoring() {
     // Ensure only one instance is running (manually check Task Manager or use taskkill /F /IM node.exe if needed)
     Promise.all([
         monitorTransactions(),
-        monitorCommands()
+        // monitorCommands()
     ]).catch(err => console.error("Error in monitoring tasks:", err));
 }
 
