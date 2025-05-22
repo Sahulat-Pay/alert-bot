@@ -117,7 +117,7 @@ async function sendConsolidatedAlerts(data) {
     for (let i = 0; i < 1 && !userAcknowledged; i++) {
         await sendTelegramMessage(message);
         await new Promise(resolve => setTimeout(resolve, 60 * 1000)); // Wait 60 seconds
-        userAcknowledged = await checkUserResponse();
+        // userAcknowledged = await checkUserResponse();
     }
 
     if (userAcknowledged) {
@@ -128,54 +128,54 @@ async function sendConsolidatedAlerts(data) {
 }
 
 // Function to check user messages for commands
-async function checkUserResponse() {
-    const telegramUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getUpdates?offset=${lastUpdateId + 1}`;
-    try {
-        console.log("Fetching Telegram updates...");
-        const response = await axios.get(telegramUrl);
-        const updates = response.data.result;
+// async function checkUserResponse() {
+//     const telegramUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getUpdates?offset=${lastUpdateId + 1}`;
+//     try {
+//         console.log("Fetching Telegram updates...");
+//         const response = await axios.get(telegramUrl);
+//         const updates = response.data.result;
 
-        let stopAlerts = false;
+//         let stopAlerts = false;
 
-        for (let update of updates) {
-            lastUpdateId = update.update_id; // Update the offset
-            if (update.message && update.message.chat.id == TELEGRAM_USER_ID) {
-                const text = update.message.text;
-                if (text === "/check" || text === "/check@Devtectalertbot") {
-                    console.log("✅ User acknowledged an alert.");
-                    stopAlerts = true;
-                } else if (text.startsWith("/update ")) {
-                    const merchantId = text.split(" ")[1];
-                    if (MERCHANTS[merchantId]) {
-                        console.log(`🔹 User requested update for Merchant ID ${merchantId}`);
-                        const type = merchantId === "51" ? "Monetix Easypaisa" : `Merchant ${merchantId} Easypaisa`;
-                        await handleUpdateCommand(type, MERCHANTS[merchantId], true, "Easypaisa");
-                    } else {
-                        await sendTelegramMessage(`❌ Invalid Merchant ID: ${merchantId}\nAvailable IDs: ${Object.keys(MERCHANTS).join(", ")}`);
-                    }
-                } else if (text === "/updateeasy") {
-                    console.log("🔹 User requested update for All Easypaisa.");
-                    await handleUpdateCommand("All Easypaisa", API_URL_ALL, true, "Easypaisa");
-                } else if (text === "/updatejazz") {
-                    console.log("🔹 User requested update for All JazzCash.");
-                    await handleUpdateCommand("All JazzCash", API_URL_ALL, true, "JazzCash");
-                } else if (text === "/updateall") {
-                    console.log("🔹 User requested update for All Transactions.");
-                    await handleUpdateCommand("All Transactions", API_URL_ALL, false);
-                }
-            }
-        }
-        return stopAlerts;
-    } catch (error) {
-        if (error.response && error.response.status === 409) {
-            console.warn("⚠️ Conflict detected in getUpdates. Retrying after delay...");
-            await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds before retrying
-            return await checkUserResponse(); // Retry
-        }
-        console.error("❌ Error checking Telegram messages: ", error.response?.data || error.message);
-        return false;
-    }
-}
+//         for (let update of updates) {
+//             lastUpdateId = update.update_id; // Update the offset
+//             if (update.message && update.message.chat.id == TELEGRAM_USER_ID) {
+//                 const text = update.message.text;
+//                 if (text === "/check" || text === "/check@Devtectalertbot") {
+//                     console.log("✅ User acknowledged an alert.");
+//                     stopAlerts = true;
+//                 } else if (text.startsWith("/update ")) {
+//                     const merchantId = text.split(" ")[1];
+//                     if (MERCHANTS[merchantId]) {
+//                         console.log(`🔹 User requested update for Merchant ID ${merchantId}`);
+//                         const type = merchantId === "51" ? "Monetix Easypaisa" : `Merchant ${merchantId} Easypaisa`;
+//                         await handleUpdateCommand(type, MERCHANTS[merchantId], true, "Easypaisa");
+//                     } else {
+//                         await sendTelegramMessage(`❌ Invalid Merchant ID: ${merchantId}\nAvailable IDs: ${Object.keys(MERCHANTS).join(", ")}`);
+//                     }
+//                 } else if (text === "/updateeasy") {
+//                     console.log("🔹 User requested update for All Easypaisa.");
+//                     await handleUpdateCommand("All Easypaisa", API_URL_ALL, true, "Easypaisa");
+//                 } else if (text === "/updatejazz") {
+//                     console.log("🔹 User requested update for All JazzCash.");
+//                     await handleUpdateCommand("All JazzCash", API_URL_ALL, true, "JazzCash");
+//                 } else if (text === "/updateall") {
+//                     console.log("🔹 User requested update for All Transactions.");
+//                     await handleUpdateCommand("All Transactions", API_URL_ALL, false);
+//                 }
+//             }
+//         }
+//         return stopAlerts;
+//     } catch (error) {
+//         if (error.response && error.response.status === 409) {
+//             console.warn("⚠️ Conflict detected in getUpdates. Retrying after delay...");
+//             await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds before retrying
+//             return await checkUserResponse(); // Retry
+//         }
+//         console.error("❌ Error checking Telegram messages: ", error.response?.data || error.message);
+//         return false;
+//     }
+// }
 
 // Function to handle update commands
 async function handleUpdateCommand(type, url, filterProvider, providerName = null) {
