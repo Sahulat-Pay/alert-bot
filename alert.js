@@ -16,8 +16,8 @@ app.get("/", (req, res) => {
 })
 
 // Telegram configuration
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const TELEGRAM_USER_ID = process.env.TELEGRAM_USER_ID;
+const TELEGRAM_BOT_TOKEN = "8125987558:AAHcWxHEqTkqJIoZestOeWY3kOYKGgFVTSU";
+const TELEGRAM_USER_ID = '-1002662637300';
 
 // API endpoints
 const API_URL_ALL = 'https://server.sahulatpay.com/transactions/tele/last-15-mins';
@@ -26,19 +26,6 @@ const MERCHANTS = {
     5: 'https://server.sahulatpay.com/transactions/tele/last-15-mins?merchantId=5',
     16: 'https://server.sahulatpay.com/transactions/tele/last-15-mins?merchantId=16'   // Add more as needed
 };
-
-// Global offset to track processed Telegram updates
-let lastUpdateId = 0;
-
-// Function to delete Telegram webhook
-async function deleteWebhook() {
-    try {
-        const response = await axios.get(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/deleteWebhook`);
-        console.log("Webhook deleted:", response.data);
-    } catch (error) {
-        console.error("Error deleting webhook:", error.response?.data || error.message);
-    }
-}
 
 // Function to fetch transactions
 async function fetchTransactions(url) {
@@ -82,7 +69,7 @@ async function sendTelegramMessage(message) {
         });
         console.log("✅ Message sent to Telegram!");
     } catch (error) {
-        console.error(`❌ Failed to send Telegram message: ${error.response?.data || error.message}`);
+        console.error(`❌ Failed to send Telegram message: ${error.message}`);
     }
 }
 
@@ -111,89 +98,9 @@ async function sendConsolidatedAlerts(data) {
         }
     }
 
-    message += "Reply /check to stop alerts!";
-    
-    let userAcknowledged = false;
-    for (let i = 0; i < 1 && !userAcknowledged; i++) {
-        await sendTelegramMessage(message);
-        await new Promise(resolve => setTimeout(resolve, 60 * 1000)); // Wait 60 seconds
-        // userAcknowledged = await checkUserResponse();
-    }
-
-    if (userAcknowledged) {
-        await sendTelegramMessage("✅ Alerts stopped by user response.");
-    } else {
-        console.log("⚠️ No response from user. Stopping alerts until next cycle.");
-    }
-}
-
-// Function to check user messages for commands
-// async function checkUserResponse() {
-//     const telegramUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getUpdates?offset=${lastUpdateId + 1}`;
-//     try {
-//         console.log("Fetching Telegram updates...");
-//         const response = await axios.get(telegramUrl);
-//         const updates = response.data.result;
-
-//         let stopAlerts = false;
-
-//         for (let update of updates) {
-//             lastUpdateId = update.update_id; // Update the offset
-//             if (update.message && update.message.chat.id == TELEGRAM_USER_ID) {
-//                 const text = update.message.text;
-//                 if (text === "/check" || text === "/check@Devtectalertbot") {
-//                     console.log("✅ User acknowledged an alert.");
-//                     stopAlerts = true;
-//                 } else if (text.startsWith("/update ")) {
-//                     const merchantId = text.split(" ")[1];
-//                     if (MERCHANTS[merchantId]) {
-//                         console.log(`🔹 User requested update for Merchant ID ${merchantId}`);
-//                         const type = merchantId === "51" ? "Monetix Easypaisa" : `Merchant ${merchantId} Easypaisa`;
-//                         await handleUpdateCommand(type, MERCHANTS[merchantId], true, "Easypaisa");
-//                     } else {
-//                         await sendTelegramMessage(`❌ Invalid Merchant ID: ${merchantId}\nAvailable IDs: ${Object.keys(MERCHANTS).join(", ")}`);
-//                     }
-//                 } else if (text === "/updateeasy") {
-//                     console.log("🔹 User requested update for All Easypaisa.");
-//                     await handleUpdateCommand("All Easypaisa", API_URL_ALL, true, "Easypaisa");
-//                 } else if (text === "/updatejazz") {
-//                     console.log("🔹 User requested update for All JazzCash.");
-//                     await handleUpdateCommand("All JazzCash", API_URL_ALL, true, "JazzCash");
-//                 } else if (text === "/updateall") {
-//                     console.log("🔹 User requested update for All Transactions.");
-//                     await handleUpdateCommand("All Transactions", API_URL_ALL, false);
-//                 }
-//             }
-//         }
-//         return stopAlerts;
-//     } catch (error) {
-//         if (error.response && error.response.status === 409) {
-//             console.warn("⚠️ Conflict detected in getUpdates. Retrying after delay...");
-//             await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds before retrying
-//             return await checkUserResponse(); // Retry
-//         }
-//         console.error("❌ Error checking Telegram messages: ", error.response?.data || error.message);
-//         return false;
-//     }
-// }
-
-// Function to handle update commands
-async function handleUpdateCommand(type, url, filterProvider, providerName = null) {
-    const transactions = await fetchTransactions(url);
-    let relevantTransactions = transactions;
-    if (filterProvider) {
-        relevantTransactions = providerName === "Easypaisa" 
-            ? filterEasypaisaTransactions(transactions) 
-            : filterJazzCashTransactions(transactions);
-    }
-    const { total, completed, failed, pending, successRate } = calculateTransactionStats(relevantTransactions);
-    const message = `📊 *${type}* Success Rate Update:\n\n` +
-                    `✅ Success Rate: ${successRate.toFixed(2)}%\n` +
-                    `✅ Completed: ${completed}\n` +
-                    `❌ Failed: ${failed}\n` +
-                    `⏳ Pending: ${pending}\n` +
-                    `📈 Total: ${total}`;
     await sendTelegramMessage(message);
+    await new Promise(resolve => setTimeout(resolve, 60 * 1000)); // Wait 60 seconds
+    console.log("⚠️ Stopping alerts until next cycle.");
 }
 
 // Main monitoring function
@@ -242,26 +149,14 @@ async function monitorTransactions() {
     }
 }
 
-// Function to periodically check for user commands
-// async function monitorCommands() {
-//     while (true) {
-//         // await checkUserResponse();
-//         await new Promise(resolve => setTimeout(resolve, 30 * 1000)); // Check every 30 seconds
-//     }
-// }
-
-// Start all monitoring tasks concurrently
+// Start monitoring
 async function startMonitoring() {
-    console.log("Starting all monitoring tasks...");
-    // Delete webhook to ensure polling works
-    await deleteWebhook();
-    // Add delay to ensure previous instance terminates (helps with nodemon restarts)
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    // Ensure only one instance is running (manually check Task Manager or use taskkill /F /IM node.exe if needed)
-    Promise.all([
-        monitorTransactions(),
-        // monitorCommands()
-    ]).catch(err => console.error("Error in monitoring tasks:", err));
+    console.log("Starting transaction monitoring...");
+    try {
+        await monitorTransactions();
+    } catch (err) {
+        console.error("Error in monitoring tasks:", err);
+    }
 }
 
 // Start the bot
