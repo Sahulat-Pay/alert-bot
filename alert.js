@@ -238,7 +238,7 @@ async function monitorTransactions() {
             await sendConsolidatedAlerts(data);
         }
 
-        await new Promise(resolve => setTimeout(resolve, 600 * 1000)); // Wait 10 minutes
+        await new Promise(resolve => setTimeout(resolve, 3 * 60 * 1000)); // Wait 10 minutes
     }
 }
 
